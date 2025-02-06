@@ -128,6 +128,7 @@ public final class StudentFakebookOracle extends FakebookOracle {
             return new FirstNameInfo(); // placeholder for compilation
         } catch (SQLException e) {
             System.err.println(e.getMessage());
+            
             return new FirstNameInfo();
         }
     }
