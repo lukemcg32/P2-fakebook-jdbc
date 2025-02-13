@@ -1,4 +1,4 @@
-    -- Query 2
+    -- Query 2 - Completed
     -- -----------------------------------------------------------------------------------
     -- GOALS: (A) Find the IDs, first names, and last names of users without any friends
     -- 
