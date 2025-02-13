@@ -1,0 +1,11 @@
+    -- // Query 5
+    -- // -----------------------------------------------------------------------------------
+    -- // GOALS: (A) Find the IDs, first names, last names, and birth years of each of the two
+    -- //            users in the top <num> pairs of users that meet each of the following
+    -- //            criteria:
+    -- //              (i) same gender
+    -- //              (ii) tagged in at least one common photo
+    -- //              (iii) difference in birth years is no more than <yearDiff>
+    -- //              (iv) not friends
+    -- //        (B) For each pair identified in (A), find the IDs, links, and IDs and names of
+    -- //            the containing album of each photo in which they are tagged together
