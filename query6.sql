@@ -1,0 +1,7 @@
+    -- // Query 6
+    -- // -----------------------------------------------------------------------------------
+    -- // GOALS: (A) Find the IDs, first names, and last names of each of the two users in
+    -- //            the top <num> pairs of users who are not friends but have a lot of
+    -- //            common friends
+    -- //        (B) For each pair identified in (A), find the IDs, first names, and last names
+    -- //            of all the two users' common friends
