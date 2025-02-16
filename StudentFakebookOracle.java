@@ -204,6 +204,29 @@ public final class StudentFakebookOracle extends FakebookOracle {
 
         try (Statement stmt = oracle.createStatement(FakebookOracleConstants.AllScroll,
                 FakebookOracleConstants.ReadOnly)) {
+            
+            // (a) find user with no friends
+            ResultSet rs = stmt.executeQuery(
+            // our query from query2.sql
+            "SELECT U.user_id, U.first_name, U.last_name " +
+            "FROM project2.Public_Users U " +
+            "WHERE NOT EXISTS " +
+            "(SELECT 1 FROM project2.Public_Friends F " +
+            " WHERE U.user_id = F.user1_id OR U.user_id = F.user2_id " + ")");
+
+            // we must retrieve user id, first name, and last name
+            // with this create the UserInfo object like in example
+            while (rs.next()) {
+                // should we use long instead of int?
+                int userID = rs.getLong("user_id");
+                String firstName = rs.getString("first_name"); 
+                String lastName = rs.getString("last_name"); 
+
+                UserInfo lonelyUser = new UserInfo(userID, firstName, lastName);
+                results.add(lonelyUser); // add user object to results list
+            }
+            
+            rs.close();
             /*
                 EXAMPLE DATA STRUCTURE USAGE
                 ============================================
