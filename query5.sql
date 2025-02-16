@@ -139,6 +139,9 @@ I think this order by is wrong. This is what spec says:
 The pairs of users should be reported in descending order by the number of photos in which the two users were tagged together.
 
 Right now we're sorting by ID instead of number of shared photos
+
+Think it should be this:
+ORDER BY tv.shared_photos DESC, tv.user_id1 ASC, tv.user_id2 ASC, p.photo_id ASC;
 */
 ORDER BY tv.user_id1, tv.user_id2, p.photo_id;
 
