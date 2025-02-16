@@ -111,6 +111,65 @@ public final class StudentFakebookOracle extends FakebookOracle {
     public FirstNameInfo findNameInfo() throws SQLException {
         try (Statement stmt = oracle.createStatement(FakebookOracleConstants.AllScroll,
                 FakebookOracleConstants.ReadOnly)) {
+            
+            // (a) find longest first names
+            ResultSet rs = stmt.executeQuery( // rs stores query result
+            // our query from query1.sql
+            "SELECT DISTINCT first_name " +
+            "FROM project2.Public_Users " +
+            "WHERE length(first_name) = " +
+            // Subquery below
+            "(SELECT MAX(length(first_name)) " +
+            "FROM project2.Public_Users) " +
+            "AND first_name IS NOT NULL");
+
+            //process the results
+            while (rs.next()) {
+                info.addLongName(rs.getString("first_name"));
+            }
+            
+            // (b) find shortest first names
+            rs = stmt.executeQuery(
+            "SELECT DISTINCT first_name " +
+            "FROM project2.Public_Users " +
+            "WHERE length(first_name) =  " +
+            // subquery below
+            "(SELECT MIN(length(first_name)) " +
+            " FROM project2.Public_Users) " +
+            " AND first_name IS NOT NULL");
+            
+            while (rs.next()) {
+                info.addShortName(rs.getString("first_name"));
+            }
+
+            // (c) find count of most common first name
+            rs = stmt.executeQuery(
+            "SELECT COUNT(*) AS mostName " +
+            "FROM project2.Public_Users " +
+            "WHERE First_Name IS NOT NULL " +
+            "GROUP BY First_Name " +
+            "ORDER BY mostName DESC " +
+            "FETCH FIRST 1 ROW ONLY");
+            
+            if (rs.next()) {
+                mostCommonNameCount = rs.getInt("mostName");
+                info.setCommonNameCount(mostCommonNameCount);
+            }
+            
+            // (d) find the most common first name
+            rs = stmt.executeQuery(
+            "SELECT first_name " +
+            "FROM project2.Public_Users " +
+            "WHERE First_Name IS NOT NULL " +
+            "GROUP BY First_Name " +
+            "HAVING COUNT(*) = " + mostCommonNameCount + " " +  // uses the value from part c
+            "ORDER BY first_name ASC");
+
+            while (rs.next()) {
+                info.addCommonName(rs.getString("first_name"));
+            }
+
+            rs.close();
             /*
                 EXAMPLE DATA STRUCTURE USAGE
                 ============================================
