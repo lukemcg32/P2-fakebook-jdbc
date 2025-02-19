@@ -244,11 +244,11 @@ public final class StudentFakebookOracle extends FakebookOracle {
             // with this create the UserInfo object like in example
             while (rs.next()) {
                 // should we use long instead of int?
-                long userID = rs.getLong("user_id");
-                String firstName = rs.getString("first_name"); 
-                String lastName = rs.getString("last_name"); 
+                long userid = rs.getLong("user_id");
+                String firstNm = rs.getString("first_name"); 
+                String lastNm = rs.getString("last_name"); 
 
-                UserInfo lonelyUser = new UserInfo(userID, firstName, lastName);
+                UserInfo lonelyUser = new UserInfo(userid, firstNm, lastNm);
                 results.add(lonelyUser); // add user object to results list
             }
             
@@ -296,12 +296,12 @@ public final class StudentFakebookOracle extends FakebookOracle {
             //process it now
             //for each tuple create a UserInfo object. Add it to results list
             while (rs.next()) {
-            long userId = rs.getLong("user_id");
-            String firstName = rs.getString("first_name");
-            String lastName = rs.getString("last_name");
+            long userid = rs.getLong("user_id");
+            String firstNm = rs.getString("first_name");
+            String lastNm = rs.getString("last_name");
 
             // UserInfo object with values
-            UserInfo user = new UserInfo(userId, firstName, lastName);
+            UserInfo user = new UserInfo(userid, firstNm, lastNm);
             results.add(user);
         }
 
@@ -682,21 +682,23 @@ public final class StudentFakebookOracle extends FakebookOracle {
             "WHERE HC1.hometown_city_id = HC2.hometown_city_id " +
             "AND U1.last_name = U2.last_name " +
             "AND (ABS(U1.year_of_birth - U2.year_of_birth) < 10) " +
-            "AND U1.user_id < U2.user_id");
+            "AND U1.user_id < U2.user_id " +
+            //add this order by to fix ordering issue in ag
+            "ORDER BY U1.user_id ASC, U2.user_id ASC");
 
             while (rs.next()) {
                 //for each tuple, extract userid, first and last name
-                long user1Id = rs.getLong("user_id");
+                long user1id = rs.getLong("user_id");
                 String user1First = rs.getString("first_name");
                 String user1Last = rs.getString("last_name");
 
-                long user2Id = rs.getLong("user2_id");
+                long user2id = rs.getLong("user2_id");
                 String user2First = rs.getString("user2_first");
                 String user2Last = rs.getString("user2_last");
 
                 //create objects to store data together
-                UserInfo u1 = new UserInfo(user1Id, user1First, user1Last);
-                UserInfo u2 = new UserInfo(user2Id, user2First, user2Last);
+                UserInfo u1 = new UserInfo(user1id, user1First, user1Last);
+                UserInfo u2 = new UserInfo(user2id, user2First, user2Last);
 
                 //sotre sibling pair
                 SiblingInfo siblingPair = new SiblingInfo(u1, u2);
