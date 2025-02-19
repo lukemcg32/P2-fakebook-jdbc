@@ -539,8 +539,46 @@ public final class StudentFakebookOracle extends FakebookOracle {
         try (Statement stmt = oracle.createStatement(FakebookOracleConstants.AllScroll,
                 FakebookOracleConstants.ReadOnly)) {
             
-            
-            
+            //(a) Find all pairs of users that meet each of the following criteria
+    //              (i) same last name
+    //              (ii) same hometown
+    //              (iii) are friends
+    //              (iv) less than 10 birth years apart
+            // query from query9.sql
+            ResultSet rs = stmt.executeQuery(
+            "SELECT U1.user_id, U1.first_name, U1.last_name, " +
+            "U2.user_id AS user2_id, U2.first_name AS user2_first, U2.last_name AS user2_last " +
+            "FROM project2.Public_Users U1 " +
+            "JOIN project2.Public_Users U2 ON U1.user_id != U2.user_id " +
+            "JOIN project2.Public_FRIENDS F ON (U1.user_id = F.user1_id AND U2.user_id = F.user2_id) " +
+            "OR (U2.user_id = F.user1_id AND U1.user_id = F.user2_id) " +
+            "JOIN project2.Public_User_Hometown_Cities HC1 ON HC1.user_id = U1.user_id " +
+            "JOIN project2.Public_User_Hometown_Cities HC2 ON HC2.user_id = U2.user_id " +
+            "WHERE HC1.hometown_city_id = HC2.hometown_city_id " +
+            "AND U1.last_name = U2.last_name " +
+            "AND (ABS(U1.year_of_birth - U2.year_of_birth) < 10) " +
+            "AND U1.user_id < U2.user_id");
+
+            while (rs.next()) {
+                //for each tuple, extract userid, first and last name
+                long user1Id = rs.getLong("user_id");
+                String user1First = rs.getString("first_name");
+                String user1Last = rs.getString("last_name");
+
+                long user2Id = rs.getLong("user2_id");
+                String user2First = rs.getString("user2_first");
+                String user2Last = rs.getString("user2_last");
+
+                //create objects to store data together
+                UserInfo u1 = new UserInfo(user1Id, user1First, user1Last);
+                UserInfo u2 = new UserInfo(user2Id, user2First, user2Last);
+
+                //sotre sibling pair
+                SiblingInfo siblingPair = new SiblingInfo(u1, u2);
+                results.add(siblingPair);
+            }
+
+            rs.close();
             /*
                 EXAMPLE DATA STRUCTURE USAGE
                 ============================================
