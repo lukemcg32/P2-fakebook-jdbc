@@ -1,3 +1,9 @@
+/*
+Luke McGuiness and Sam Kaminski
+P2 for 484
+Winter 25
+*/
+
 package project2;
 
 import java.sql.Connection;
@@ -109,6 +115,11 @@ public final class StudentFakebookOracle extends FakebookOracle {
     //        (C) The first name held by the most users
     //        (D) The number of users whose first name is that identified in (C)
     public FirstNameInfo findNameInfo() throws SQLException {
+        //trying this to see if it fixes error in ag:
+
+        FirstNameInfo info = new FirstNameInfo();
+        int mostCommonNameCount = 0;
+
         try (Statement stmt = oracle.createStatement(FakebookOracleConstants.AllScroll,
                 FakebookOracleConstants.ReadOnly)) {
             
@@ -117,10 +128,11 @@ public final class StudentFakebookOracle extends FakebookOracle {
             // our query from query1.sql
             "SELECT DISTINCT first_name " +
             "FROM project2.Public_Users " +
-            "WHERE length(first_name) = " +
+            "WHERE length(first_name) = (" +
             // Subquery below
-            "(SELECT MAX(length(first_name)) " +
-            "FROM project2.Public_Users) " +
+            "SELECT MAX(length(first_name)) " +
+            "FROM project2.Public_Users " +
+            ")"                            +
             "AND first_name IS NOT NULL");
 
             //process the results
@@ -132,11 +144,12 @@ public final class StudentFakebookOracle extends FakebookOracle {
             rs = stmt.executeQuery(
             "SELECT DISTINCT first_name " +
             "FROM project2.Public_Users " +
-            "WHERE length(first_name) =  " +
+            "WHERE length(first_name) =  (" +
             // subquery below
-            "(SELECT MIN(length(first_name)) " +
-            " FROM project2.Public_Users) " +
-            " AND first_name IS NOT NULL");
+            "SELECT MIN(length(first_name)) " +
+            "FROM project2.Public_Users " +
+            ")"                            +
+            "AND first_name IS NOT NULL");
             
             while (rs.next()) {
                 info.addShortName(rs.getString("first_name"));
@@ -163,6 +176,13 @@ public final class StudentFakebookOracle extends FakebookOracle {
             "WHERE First_Name IS NOT NULL " +
             "GROUP BY First_Name " +
             "HAVING COUNT(*) = " + mostCommonNameCount + " " +  // uses the value from part c
+            "SELECT COUNT(*) AS mostName" +
+            "FROM project2.Public_Users" +
+            "WHERE First_Name IS NOT NULL" +
+            "GROUP BY First_Name" +
+            "ORDER BY mostName DESC" +
+            "FETCH FIRST 1 ROW ONLY" +
+            ")"                            +
             "ORDER BY first_name ASC");
 
             while (rs.next()) {
@@ -184,7 +204,7 @@ public final class StudentFakebookOracle extends FakebookOracle {
                 info.setCommonNameCount(42);
                 return info;
             */
-            return new FirstNameInfo(); // placeholder for compilation
+            return info; 
         } catch (SQLException e) {
             System.err.println(e.getMessage());
             
@@ -212,13 +232,15 @@ public final class StudentFakebookOracle extends FakebookOracle {
             "FROM project2.Public_Users U " +
             "WHERE NOT EXISTS " +
             "(SELECT 1 FROM project2.Public_Friends F " +
-            " WHERE U.user_id = F.user1_id OR U.user_id = F.user2_id " + ")");
+            " WHERE U.user_id = F.user1_id OR U.user_id = F.user2_id " + 
+            ")"                                     +
+            "ORDER BY U.user_id ASC");
 
             // we must retrieve user id, first name, and last name
             // with this create the UserInfo object like in example
             while (rs.next()) {
                 // should we use long instead of int?
-                int userID = rs.getLong("user_id");
+                long userID = rs.getLong("user_id");
                 String firstName = rs.getString("first_name"); 
                 String lastName = rs.getString("last_name"); 
 
@@ -270,7 +292,7 @@ public final class StudentFakebookOracle extends FakebookOracle {
             //process it now
             //for each tuple create a UserInfo object. Add it to results list
             while (rs.next()) {
-            int userId = rs.getLong("user_id");
+            long userId = rs.getLong("user_id");
             String firstName = rs.getString("first_name");
             String lastName = rs.getString("last_name");
 
@@ -334,9 +356,9 @@ public final class StudentFakebookOracle extends FakebookOracle {
                 //iterates through resultset
                 while (rsPhotos.next()) {
                     //each row extracts photoid, photolink, albumid, albumname
-                    int photoId = rsPhotos.getLong("Photo_ID");
+                    long photoId = rsPhotos.getLong("Photo_ID");
                     String photoLink = rsPhotos.getString("Photo_Link");
-                    int albumId = rsPhotos.getLong("Album_ID");
+                    long albumId = rsPhotos.getLong("Album_ID");
                     String albumName = rsPhotos.getString("Album_Name");
 
                     //creates PhotoInfo object, and uses our values
@@ -358,7 +380,7 @@ public final class StudentFakebookOracle extends FakebookOracle {
                         //creates a UserInfo object per user
                     while (rsUsers.next()) {
                         //again, should we use long? given a long type for query9 so not sure
-                        int userId = rsUsers.getLong("user_id");
+                        long userId = rsUsers.getLong("user_id");
                         String firstName = rsUsers.getString("first_name");
                         String lastName = rsUsers.getString("last_name");
 

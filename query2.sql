@@ -11,4 +11,5 @@ WHERE NOT EXISTS (
     SELECT 1 
     FROM project2.Public_Friends F
     WHERE U.user_id = F.user1_id OR U.user_id = F.user2_id
-);
+)
+ORDER BY U.user_id ASC;
