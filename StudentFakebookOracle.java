@@ -562,6 +562,68 @@ public final class StudentFakebookOracle extends FakebookOracle {
     public AgeInfo findAgeInfo(long userID) throws SQLException {
         try (Statement stmt = oracle.createStatement(FakebookOracleConstants.AllScroll,
                 FakebookOracleConstants.ReadOnly)) {
+            
+            //(A) Find the ID, first name, and last name of the oldest friend of the user
+            //with User ID <userID>
+            //create view from query8.sql
+                //this collects all friends of a user wither their birth info
+            stmt.executeUpdate(
+                "CREATE VIEW FindAges AS " +
+                "SELECT U.user_id, U.first_name, U.last_name, U.year_of_birth, U.month_of_birth, U.day_of_birth " +
+                "FROM project2.Public_Users U " +
+                "JOIN project2.Public_FRIENDS F ON (F.user1_id = U.user_id OR F.user2_id = U.user_id) " +
+                "WHERE " + userID + " IN (F.user1_id, F.user2_id)"
+            );
+
+            //query to find oldest friend
+            ResultSet rsOldest = stmt.executeQuery(
+                "SELECT user_id, first_name, last_name " +
+                "FROM FindAges " +
+                //this order by allows us to put the oldest friend first
+                "ORDER BY year_of_birth ASC, month_of_birth ASC, day_of_birth ASC, user_id DESC " +
+                "FETCH FIRST 1 ROW ONLY"
+            );
+            //oldest friend object
+            UserInfo oldest = null;
+            if (rsOldest.next()) {
+                //get oldest friends userid, first, and last name
+                long id = rsOldest.getLong("user_id");
+                String first = rsOldest.getString("first_name");
+                String last = rsOldest.getString("last_name");
+                //fill object with info
+                oldest = new UserInfo(id, first, last);
+            }
+            rsOldest.close();
+
+
+            //B) Find the ID, first name, and last name of the youngest friend of the user
+            //with User ID <userID>
+            //now, still use view to get youngest friend
+            ResultSet rsYoungest = stmt.executeQuery(
+                "SELECT user_id, first_name, last_name " +
+                "FROM FindAges " +
+                //this allows us to put the youngest friend first
+                "ORDER BY year_of_birth DESC, month_of_birth DESC, day_of_birth DESC, user_id DESC " +
+                "FETCH FIRST 1 ROW ONLY"
+            );
+            //youngest friend object
+            UserInfo youngest = null;
+            if (rsYoungest.next()) {
+                //get youngest friends userid, first, and last name
+                long id = rsYoungest.getLong("user_id");
+                String first = rsYoungest.getString("first_name");
+                String last = rsYoungest.getString("last_name");
+                //update object with this info
+                youngest = new UserInfo(id, first, last);
+            }
+            rsYoungest.close();
+
+            // drop the view
+            stmt.executeUpdate("DROP VIEW FindAges");
+            
+            // Create the AgeInfo object with the oldest and youngest friends.
+            result = new AgeInfo(oldest, youngest);
+            
             /*
                 EXAMPLE DATA STRUCTURE USAGE
                 ============================================
@@ -569,7 +631,7 @@ public final class StudentFakebookOracle extends FakebookOracle {
                 UserInfo young = new UserInfo(80000000, "Neil", "deGrasse Tyson");
                 return new AgeInfo(old, young);
             */
-            return new AgeInfo(new UserInfo(-1, "UNWRITTEN", "UNWRITTEN"), new UserInfo(-1, "UNWRITTEN", "UNWRITTEN")); // placeholder for compilation
+            return result;
         } catch (SQLException e) {
             System.err.println(e.getMessage());
             return new AgeInfo(new UserInfo(-1, "ERROR", "ERROR"), new UserInfo(-1, "ERROR", "ERROR"));
