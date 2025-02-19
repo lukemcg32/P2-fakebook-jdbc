@@ -489,6 +489,53 @@ public final class StudentFakebookOracle extends FakebookOracle {
     public EventStateInfo findEventStates() throws SQLException {
         try (Statement stmt = oracle.createStatement(FakebookOracleConstants.AllScroll,
                 FakebookOracleConstants.ReadOnly)) {
+            
+            // (A) Find the name of the state or states in which the most events are held
+            // again, use ddl to create view
+            //groups event by state
+            stmt.executeUpdate(
+            "CREATE VIEW EventCount AS " +
+            "SELECT C.State_Name, COUNT(*) AS StateCount " +
+            "FROM project2.Public_Cities C " +
+            "JOIN project2.Public_User_Events E ON E.event_city_id = C.city_id " +
+            "GROUP BY C.State_Name"
+        );
+
+            //query to retrieve highest event count from view
+            ResultSet rsCount = stmt.executeQuery(
+                "SELECT MAX(StateCount) AS MaxCount FROM EventCount"
+            );
+            //store this val in maxCount
+            long maxCount = -1;
+            if (rsCount.next()) {
+                maxCount = rsCount.getLong("MaxCount");
+            }
+            rsCount.close();
+
+            //return this later
+            EventStateInfo info = new EventStateInfo(maxCount);
+
+            //(B) Find the number of events held in the states identified in (A)
+            //now create actual query
+                //this selects state names from view where eventCount == maxCount
+            ResultSet rsStates = stmt.executeQuery(
+                "SELECT State_Name " +
+                "FROM EventCount " +
+                "WHERE StateCount = (SELECT MAX(StateCount) FROM EventCount) " +
+                //order by alphabetically
+                "ORDER BY State_Name ASC"
+            );
+
+            while (rsStates.next()) {
+                //create object for each state event
+                String stateName = rsStates.getString("State_Name");
+                info.addState(stateName);
+            }
+            rsStates.close();
+
+            //remember to drop all views
+            stmt.executeUpdate("DROP VIEW EventCount");
+
             /*
                 EXAMPLE DATA STRUCTURE USAGE
                 ============================================
@@ -498,7 +545,7 @@ public final class StudentFakebookOracle extends FakebookOracle {
                 info.addState("New Hampshire");
                 return info;
             */
-            return new EventStateInfo(-1); // placeholder for compilation
+            return info; // update this
         } catch (SQLException e) {
             System.err.println(e.getMessage());
             return new EventStateInfo(-1);
