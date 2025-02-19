@@ -132,13 +132,15 @@ public final class StudentFakebookOracle extends FakebookOracle {
             // Subquery below
             "SELECT MAX(length(first_name)) " +
             "FROM project2.Public_Users " +
-            ")"                            +
+            ") "                            +
             "AND first_name IS NOT NULL");
 
             //process the results
             while (rs.next()) {
                 info.addLongName(rs.getString("first_name"));
             }
+
+            //rs.close();
             
             // (b) find shortest first names
             rs = stmt.executeQuery(
@@ -155,6 +157,8 @@ public final class StudentFakebookOracle extends FakebookOracle {
                 info.addShortName(rs.getString("first_name"));
             }
 
+            //rs.close();
+
             // (c) find count of most common first name
             rs = stmt.executeQuery(
             "SELECT COUNT(*) AS mostName " +
@@ -168,6 +172,8 @@ public final class StudentFakebookOracle extends FakebookOracle {
                 mostCommonNameCount = rs.getInt("mostName");
                 info.setCommonNameCount(mostCommonNameCount);
             }
+
+            //rs.close();
             
             // (d) find the most common first name
             rs = stmt.executeQuery(
@@ -560,6 +566,8 @@ public final class StudentFakebookOracle extends FakebookOracle {
     //        (B) Find the ID, first name, and last name of the youngest friend of the user
     //            with User ID <userID>
     public AgeInfo findAgeInfo(long userID) throws SQLException {
+        //declare this before using
+        AgeInfo result = null;
         try (Statement stmt = oracle.createStatement(FakebookOracleConstants.AllScroll,
                 FakebookOracleConstants.ReadOnly)) {
             
