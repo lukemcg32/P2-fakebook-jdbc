@@ -14,7 +14,9 @@ WHERE length(first_name) = (
     SELECT MAX(length(first_name))
     FROM project2.Public_Users     -- added this from because the select wasn't selected anything
 )
-AND first_name IS NOT NULL;
+AND first_name IS NOT NULL
+-- added this to fix ag error
+ORDER BY first_name ASC;
 
 
 -- Part b
@@ -24,7 +26,10 @@ WHERE length(first_name) = (
     SELECT MIN(length(first_name))
     FROM project2.Public_Users     -- same logic as (a)
 )
-AND first_name IS NOT NULL;
+AND first_name IS NOT NULL
+-- added this to fix ag error
+ORDER BY first_name ASC;
+
 
 -- Part c
 -- going to copy the logic of 0a and use FETCH FIRST 1 ROW ONLY

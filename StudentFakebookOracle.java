@@ -133,7 +133,9 @@ public final class StudentFakebookOracle extends FakebookOracle {
             "SELECT MAX(length(first_name)) " +
             "FROM project2.Public_Users " +
             ") "                            +
-            "AND first_name IS NOT NULL");
+            "AND first_name IS NOT NULL " +
+            //add this to order correctly
+            "ORDER BY first_name ASC");
 
             //process the results
             while (rs.next()) {
@@ -150,8 +152,10 @@ public final class StudentFakebookOracle extends FakebookOracle {
             // subquery below
             "SELECT MIN(length(first_name)) " +
             "FROM project2.Public_Users " +
-            ")"                            +
-            "AND first_name IS NOT NULL");
+            ") "                            +
+            "AND first_name IS NOT NULL "+
+            //add this to order correctly
+            "ORDER BY first_name ASC");
             
             while (rs.next()) {
                 info.addShortName(rs.getString("first_name"));
