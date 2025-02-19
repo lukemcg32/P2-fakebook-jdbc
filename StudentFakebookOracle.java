@@ -176,13 +176,7 @@ public final class StudentFakebookOracle extends FakebookOracle {
             "WHERE First_Name IS NOT NULL " +
             "GROUP BY First_Name " +
             "HAVING COUNT(*) = " + mostCommonNameCount + " " +  // uses the value from part c
-            "SELECT COUNT(*) AS mostName" +
-            "FROM project2.Public_Users" +
-            "WHERE First_Name IS NOT NULL" +
-            "GROUP BY First_Name" +
-            "ORDER BY mostName DESC" +
-            "FETCH FIRST 1 ROW ONLY" +
-            ")"                            +
+            //dont need to include subquery here bc we have this variable from part c
             "ORDER BY first_name ASC");
 
             while (rs.next()) {
