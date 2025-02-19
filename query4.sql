@@ -5,6 +5,7 @@
     -- //        (B) For each photo identified in (A), find the IDs, first names, and last names
     -- //            of the users therein tagged
 
+-- part a
 CREATE VIEW Q4_View AS
 SELECT P.Photo_ID, P.Photo_Link, A.Album_ID, A.Album_Name, COUNT(*) AS numTags
 FROM project2.Public_Photos P
@@ -20,7 +21,7 @@ SELECT Photo_ID, Photo_Link, Album_ID, Album_Name
 FROM Q4_View;
 
 
-
+-- Now part b
 -- this works, just unordered
 SELECT U.user_id, U.first_name, U.last_name
 FROM project2.Public_Users U
