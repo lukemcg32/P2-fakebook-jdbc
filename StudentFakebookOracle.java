@@ -326,71 +326,75 @@ public final class StudentFakebookOracle extends FakebookOracle {
         try (Statement stmt = oracle.createStatement(FakebookOracleConstants.AllScroll,
                 FakebookOracleConstants.ReadOnly)) {
             
-            //funky here because we're creating a view
-            //(a)Find the IDs, links, and IDs and names of the containing album of the top
+            //have to use a ddl to create the view
+            //do this instead of a normal query, bc we don't want to return this data
+            // (a) Find the IDs, links, and IDs and names of the containing album of the top
             //<num> photos with the most tagged users
-            //this returns photo ID, link, albumID, album name, num of tags
-            //pulled this from piazza
-            String createView = "CREATE VIEW Q4_View AS " +
+            
+            //create the view
+            stmt.executeUpdate(
+            "CREATE VIEW Q4_View AS " +
             "SELECT P.Photo_ID, P.Photo_Link, A.Album_ID, A.Album_Name, COUNT(*) AS numTags " +
             "FROM project2.Public_Photos P " +
             "JOIN project2.Public_Albums A ON A.Album_ID = P.Album_ID " +
             "JOIN project2.Public_Tags T ON T.Tag_Photo_ID = P.Photo_ID " +
             "GROUP BY P.Photo_ID, P.Photo_Link, A.Album_ID, A.Album_Name " +
             "ORDER BY numTags DESC, P.Photo_ID ASC " +
-            "FETCH FIRST " + num + " ROWS ONLY";
+            "FETCH FIRST " + num + " ROWS ONLY"
+        );
 
-            //line below actually creates the view
-            stmt.executeUpdate(createView);
+            //now retrieve details using resultset
+            ResultSet rsPhotos = stmt.executeQuery(
+            "SELECT Photo_ID, Photo_Link, Album_ID, Album_Name FROM Q4_View"
+            );
 
-            //now have to retrieve info from view
-            //retireve photo info
-            String queryPhotos = "SELECT Photo_ID, Photo_Link, Album_ID, Album_Name FROM Q4_View";
-            try (ResultSet rsPhotos = stmt.executeQuery(queryPhotos)) {
-                //iterates through resultset
-                while (rsPhotos.next()) {
-                    //each row extracts photoid, photolink, albumid, albumname
-                    long photoId = rsPhotos.getLong("Photo_ID");
-                    String photoLink = rsPhotos.getString("Photo_Link");
-                    long albumId = rsPhotos.getLong("Album_ID");
-                    String albumName = rsPhotos.getString("Album_Name");
+            while (rsPhotos.next()) {
+                //now get photoid, link, albumid, albumname
+                long photoId = rsPhotos.getLong("Photo_ID");
+                String photoLink = rsPhotos.getString("Photo_Link");
+                long albumId = rsPhotos.getLong("Album_ID");
+                String albumName = rsPhotos.getString("Album_Name");
 
-                    //creates PhotoInfo object, and uses our values
-                    PhotoInfo photo = new PhotoInfo(photoId, albumId, photoLink, albumName);
-                    TaggedPhotoInfo taggedPhoto = new TaggedPhotoInfo(photo);
+                // PhotoInfo object
+                PhotoInfo photo = new PhotoInfo(photoId, albumId, photoLink, albumName);
+                //using PhotoInfo object, create TaggedPhotoInfo object
+                TaggedPhotoInfo taggedPhoto = new TaggedPhotoInfo(photo);
 
-                    //(b) For each photo identified in (A), find the IDs, first names, and last names
-                    //of the users therein tagged
-                    //keep this IN the while loop
-                    //for each photo from our view, find all tagged users, sort by userid
-                    String queryUsers = "SELECT U.user_id, U.first_name, U.last_name " +
+                
+                // part (b) now
+                //(B) For each photo identified in (A), find the IDs, first names, and last names
+                //of the users therein tagged
+                    //create query to get users tagged in specific photo
+                ResultSet rsUsers = stmt.executeQuery(
+                    "SELECT U.user_id, U.first_name, U.last_name " +
                     "FROM project2.Public_Users U " +
                     "JOIN project2.Public_Tags T ON T.TAG_SUBJECT_ID = U.user_id " +
                     "WHERE T.TAG_PHOTO_ID = " + photoId + " " +
-                    "ORDER BY U.user_id ASC";
-
-                    try (ResultSet rsUsers = stmt.executeQuery(queryUsers)) {
-                        //iterate through results
-                        //creates a UserInfo object per user
-                    while (rsUsers.next()) {
-                        //again, should we use long? given a long type for query9 so not sure
-                        long userId = rsUsers.getLong("user_id");
-                        String firstName = rsUsers.getString("first_name");
-                        String lastName = rsUsers.getString("last_name");
-
-                        // Create a UserInfo object for each tagged user.
-                        UserInfo user = new UserInfo(userId, firstName, lastName);
-                        // add user to tagged photo list
-                        taggedPhoto.addTaggedUser(user);
-                    }
+                    //users in ascending order
+                    "ORDER BY U.user_id ASC"
+                );
+                while (rsUsers.next()) {
+                    //get userid, first, and last name
+                    long userId = rsUsers.getLong("user_id");
+                    String firstName = rsUsers.getString("first_name");
+                    String lastName = rsUsers.getString("last_name");
+                    //now create a user with that info
+                    UserInfo user = new UserInfo(userId, firstName, lastName);
+                    //add user object to this
+                    taggedPhoto.addTaggedUser(user);
                 }
-                // once all users are processed, add info to results
+                rsUsers.close();
+
+                //add the taggedphotoinfo object to result list, which we return
                 results.add(taggedPhoto);
             }
-        }
 
-        //don't forget to DROP VIEW
-        stmt.executeUpdate("DROP VIEW Q4_View");
+            //remember to close every result set
+            rsPhotos.close();
+
+            //drop view
+                //need this for points
+            stmt.executeUpdate("DROP VIEW Q4_View");
 
             
             /*
