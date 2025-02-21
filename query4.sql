@@ -23,10 +23,11 @@ FROM Q4_View;
 
 -- Now part b
 -- this works, just unordered
-SELECT U.user_id, U.first_name, U.last_name
+SELECT T.Tag_Photo_ID, U.user_id, U.first_name, U.last_name
 FROM project2.Public_Users U
 JOIN project2.Public_Tags T ON T.TAG_SUBJECT_ID = U.user_id
-WHERE T.TAG_PHOTO_ID IN (SELECT Photo_ID FROM Q4_View);
+WHERE T.TAG_PHOTO_ID IN (SELECT Photo_ID FROM Q4_View)
+ORDER BY T.Tag_Photo_ID ASC, U.user_id ASC;
 
 
 DROP VIEW Q4_View;

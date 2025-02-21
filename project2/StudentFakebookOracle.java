@@ -340,29 +340,49 @@ public final class StudentFakebookOracle extends FakebookOracle {
             //do this instead of a normal query, bc we don't want to return this data
             // (a) Find the IDs, links, and IDs and names of the containing album of the top
             //<num> photos with the most tagged users
+
+            System.out.println("Starting");
             
             //create OR REPLACE the view -
             stmt.executeUpdate(
             "CREATE OR REPLACE VIEW Q4_View AS " +
-            "SELECT P.Photo_ID, P.Photo_Link, A.Album_ID, A.Album_Name, COUNT(*) AS numTags " +
+            "SELECT P.Photo_ID, A.Album_ID, P.Photo_Link, A.Album_Name, COUNT(*) AS numTags " +
             "FROM project2.Public_Photos P " +
             "JOIN project2.Public_Albums A ON A.Album_ID = P.Album_ID " +
             "JOIN project2.Public_Tags T ON T.Tag_Photo_ID = P.Photo_ID " +
             "GROUP BY P.Photo_ID, P.Photo_Link, A.Album_ID, A.Album_Name " +
-            "ORDER BY numTags DESC, P.Photo_ID ASC " +
-            "FETCH FIRST " + num + " ROWS ONLY"
+            "ORDER BY numTags DESC, P.Photo_ID ASC"
         );
 
             //now retrieve details using resultset
             ResultSet rsPhotos = stmt.executeQuery(
-            "SELECT Photo_ID, Photo_Link, Album_ID, Album_Name FROM Q4_View"
+            "SELECT Photo_ID, Album_ID, Photo_Link, Album_Name " +
+            "FROM Q4_View " +
+            "FETCH FIRST " + num + " ROWS ONLY"
             );
+
+// Debugging: Print out the result set before processing
+System.out.println("=== Debugging rsPhotos ===");
+
+while (rsPhotos.next()) {
+    long photoId = rsPhotos.getLong("Photo_ID");
+    long albumId = rsPhotos.getLong("Album_ID");
+    String photoLink = rsPhotos.getString("Photo_Link");
+    String albumName = rsPhotos.getString("Album_Name");
+
+    // Print each row to check output
+    System.out.println("Photo_ID: " + photoId + ", Album_ID: " + albumId +
+            ", Photo_Link: " + photoLink + ", Album_Name: " + albumName);
+
+}
+
+
 
             while (rsPhotos.next()) {
                 //now get photoid, link, albumid, albumname
                 long photoId = rsPhotos.getLong("Photo_ID");
-                String photoLink = rsPhotos.getString("Photo_Link");
                 long albumId = rsPhotos.getLong("Album_ID");
+                String photoLink = rsPhotos.getString("Photo_Link");
                 String albumName = rsPhotos.getString("Album_Name");
 
                 // PhotoInfo object
@@ -382,8 +402,21 @@ public final class StudentFakebookOracle extends FakebookOracle {
                     "WHERE T.TAG_PHOTO_ID = " + photoId + " " +
                     //users in ascending order
                     "ORDER BY U.user_id ASC"
+
+// "SELECT T.Tag_Photo_ID, U.user_id, U.first_name, U.last_name" +
+// "FROM project2.Public_Users U" +
+// "JOIN project2.Public_Tags T ON T.TAG_SUBJECT_ID = U.user_id" +
+// "WHERE T.TAG_PHOTO_ID IN " +
+// photoId +
+// "ORDER BY T.Tag_Photo_ID ASC, U.user_id ASC"
+
                 );
+
+                
+
                 while (rsUsers.next()) {
+                    System.out.println("looping");
+
                     //get userid, first, and last name
                     long userId = rsUsers.getLong("user_id");
                     String firstName = rsUsers.getString("first_name");
@@ -392,12 +425,14 @@ public final class StudentFakebookOracle extends FakebookOracle {
                     UserInfo user = new UserInfo(userId, firstName, lastName);
                     //add user object to this
                     taggedPhoto.addTaggedUser(user);
+
+                    results.add(taggedPhoto);
                 }
-                rsUsers.close();
+                // rsUsers.close();
 
                 //add the taggedphotoinfo object to result list, which we return
                 results.add(taggedPhoto);
-            }
+            } //while
 
             //remember to close every result set
             rsPhotos.close();
@@ -424,6 +459,7 @@ public final class StudentFakebookOracle extends FakebookOracle {
             System.err.println(e.getMessage());
         }
 
+        System.out.println(results.size());
         return results;
     }
 
