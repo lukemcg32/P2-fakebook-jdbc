@@ -341,7 +341,7 @@ public final class StudentFakebookOracle extends FakebookOracle {
             // (a) Find the IDs, links, and IDs and names of the containing album of the top
             //<num> photos with the most tagged users
 
-            System.out.println("Starting");
+            //System.out.println("Starting");
             
             //create OR REPLACE the view -
             stmt.executeUpdate(
@@ -352,7 +352,7 @@ public final class StudentFakebookOracle extends FakebookOracle {
             "JOIN project2.Public_Tags T ON T.Tag_Photo_ID = P.Photo_ID " +
             "GROUP BY P.Photo_ID, P.Photo_Link, A.Album_ID, A.Album_Name " +
             "ORDER BY numTags DESC, P.Photo_ID ASC"
-        );
+            );
 
             //now retrieve details using resultset
             ResultSet rsPhotos = stmt.executeQuery(
@@ -361,87 +361,49 @@ public final class StudentFakebookOracle extends FakebookOracle {
             "FETCH FIRST " + num + " ROWS ONLY"
             );
 
-// Debugging: Print out the result set before processing
-System.out.println("=== Debugging rsPhotos ===");
-
-while (rsPhotos.next()) {
-    long photoId = rsPhotos.getLong("Photo_ID");
-    long albumId = rsPhotos.getLong("Album_ID");
-    String photoLink = rsPhotos.getString("Photo_Link");
-    String albumName = rsPhotos.getString("Album_Name");
-
-    // Print each row to check output
-    System.out.println("Photo_ID: " + photoId + ", Album_ID: " + albumId +
-            ", Photo_Link: " + photoLink + ", Album_Name: " + albumName);
-
-}
-
-
-
             while (rsPhotos.next()) {
-                //now get photoid, link, albumid, albumname
+                // Get photo details
                 long photoId = rsPhotos.getLong("Photo_ID");
                 long albumId = rsPhotos.getLong("Album_ID");
                 String photoLink = rsPhotos.getString("Photo_Link");
                 String albumName = rsPhotos.getString("Album_Name");
 
-                // PhotoInfo object
                 PhotoInfo photo = new PhotoInfo(photoId, albumId, photoLink, albumName);
-                //using PhotoInfo object, create TaggedPhotoInfo object
                 TaggedPhotoInfo taggedPhoto = new TaggedPhotoInfo(photo);
 
-                
-                // part (b) now
-                //(B) For each photo identified in (A), find the IDs, first names, and last names
-                //of the users therein tagged
-                    //create query to get users tagged in specific photo
-                ResultSet rsUsers = stmt.executeQuery(
-                    "SELECT U.user_id, U.first_name, U.last_name " +
-                    "FROM project2.Public_Users U " +
-                    "JOIN project2.Public_Tags T ON T.TAG_SUBJECT_ID = U.user_id " +
-                    "WHERE T.TAG_PHOTO_ID = " + photoId + " " +
-                    //users in ascending order
-                    "ORDER BY U.user_id ASC"
+                // Use a new Statement for the inner query so we don't interfere with rsPhotos
+                try (Statement innerStmt = oracle.createStatement(FakebookOracleConstants.AllScroll,
+                                                                FakebookOracleConstants.ReadOnly)) {
+                    ResultSet rsUsers = innerStmt.executeQuery(
+                        "SELECT U.user_id, U.first_name, U.last_name " +
+                        "FROM project2.Public_Users U " +
+                        "JOIN project2.Public_Tags T ON T.TAG_SUBJECT_ID = U.user_id " +
+                        "WHERE T.TAG_PHOTO_ID = " + photoId + " " +
+                        "ORDER BY U.user_id ASC"
+                    );
 
-// "SELECT T.Tag_Photo_ID, U.user_id, U.first_name, U.last_name" +
-// "FROM project2.Public_Users U" +
-// "JOIN project2.Public_Tags T ON T.TAG_SUBJECT_ID = U.user_id" +
-// "WHERE T.TAG_PHOTO_ID IN " +
-// photoId +
-// "ORDER BY T.Tag_Photo_ID ASC, U.user_id ASC"
+                    while (rsUsers.next()) {
+                        long userId = rsUsers.getLong("user_id");
+                        String firstName = rsUsers.getString("first_name");
+                        String lastName = rsUsers.getString("last_name");
 
-                );
-
-                
-
-                while (rsUsers.next()) {
-                    System.out.println("looping");
-
-                    //get userid, first, and last name
-                    long userId = rsUsers.getLong("user_id");
-                    String firstName = rsUsers.getString("first_name");
-                    String lastName = rsUsers.getString("last_name");
-                    //now create a user with that info
-                    UserInfo user = new UserInfo(userId, firstName, lastName);
-                    //add user object to this
-                    taggedPhoto.addTaggedUser(user);
-
-                    results.add(taggedPhoto);
+                        UserInfo user = new UserInfo(userId, firstName, lastName);
+                        taggedPhoto.addTaggedUser(user);
+                    }
+                    rsUsers.close();
                 }
-                // rsUsers.close();
-
-                //add the taggedphotoinfo object to result list, which we return
                 results.add(taggedPhoto);
-            } //while
+
+            } // while
+
 
             //remember to close every result set
             rsPhotos.close();
 
             //drop view
-                //need this for points
+            //need this for points
             stmt.executeUpdate("DROP VIEW Q4_View");
 
-            
             /*
                 EXAMPLE DATA STRUCTURE USAGE
                 ============================================
@@ -455,11 +417,12 @@ while (rsPhotos.next()) {
                 tp.addTaggedUser(u3);
                 results.add(tp);
             */
+           
         } catch (SQLException e) {
             System.err.println(e.getMessage());
         }
 
-        System.out.println(results.size());
+        //System.out.println(results.size());
         return results;
     }
 
@@ -573,6 +536,7 @@ while (rsPhotos.next()) {
         return results;
     }
 
+
         @Override
     // Query 6
     // -----------------------------------------------------------------------------------
@@ -582,42 +546,40 @@ while (rsPhotos.next()) {
     //        (B) For each pair identified in (A), find the IDs, first names, and last names
     //            of all the two users' common friends
     public FakebookArrayList<UsersPair> suggestFriends(int num) throws SQLException {
-        FakebookArrayList<UsersPair> results = new FakebookArrayList<UsersPair>("\n");
-    
-    try (Statement stmt = oracle.createStatement(FakebookOracleConstants.AllScroll,
-                                                    FakebookOracleConstants.ReadOnly)) {
+       FakebookArrayList<UsersPair> results = new FakebookArrayList<UsersPair>("\n");
+        try (Statement stmt = oracle.createStatement(FakebookOracleConstants.AllScroll,
+                                                        FakebookOracleConstants.ReadOnly)) {
 
-        // Create or replace the MutualPairs view to avoid the ORA-00955 error.
-        stmt.executeUpdate(
-            "CREATE OR REPLACE VIEW MutualPairs AS " +
-            "WITH FriendsOf AS ( " +
-            "    SELECT user1_id AS user_id, user2_id AS friend_id FROM project2.Public_Friends " +
-            "    UNION ALL " +
-            "    SELECT user2_id AS user_id, user1_id AS friend_id FROM project2.Public_Friends " +
-            "), " +
-            "PairMutuals AS ( " +
-            "    SELECT F1.user_id AS id1, F2.user_id AS id2, F1.friend_id AS mutual_id " +
-            "    FROM FriendsOf F1 " +
-            "    JOIN FriendsOf F2 ON F1.friend_id = F2.friend_id " +
-            "      AND F1.user_id < F2.user_id " +
-            ") " +
-            "SELECT id1, id2, COUNT(DISTINCT mutual_id) AS num_mutuals " +
-            "FROM PairMutuals " +
-            "GROUP BY id1, id2"
-        );
-        
-        // Retrieve the top num pairs
-        ResultSet rs = stmt.executeQuery(
-            "SELECT M.id1, M.id2, M.num_mutuals, " +
-            "       U1.first_name AS first_name1, U1.last_name AS last_name1, " +
-            "       U2.first_name AS first_name2, U2.last_name AS last_name2 " +
-            "FROM MutualPairs M " +
-            "JOIN project2.Public_Users U1 ON U1.user_id = M.id1 " +
-            "JOIN project2.Public_Users U2 ON U2.user_id = M.id2 " +
-            "ORDER BY M.num_mutuals DESC " +
-            "FETCH FIRST " + num + " ROWS ONLY"
-        );
-
+            // Create or replace the MutualPairs view to avoid the ORA-00955 error.
+            stmt.executeUpdate(
+                "CREATE OR REPLACE VIEW MutualPairs AS " +
+                "WITH FriendsOf AS ( " +
+                "    SELECT user1_id AS user_id, user2_id AS friend_id FROM project2.Public_Friends " +
+                "    UNION ALL " +
+                "    SELECT user2_id AS user_id, user1_id AS friend_id FROM project2.Public_Friends " +
+                "), " +
+                "PairMutuals AS ( " +
+                "    SELECT F1.user_id AS id1, F2.user_id AS id2, F1.friend_id AS mutual_id " +
+                "    FROM FriendsOf F1 " +
+                "    JOIN FriendsOf F2 ON F1.friend_id = F2.friend_id " +
+                "      AND F1.user_id < F2.user_id " +
+                ") " +
+                "SELECT id1, id2, COUNT(DISTINCT mutual_id) AS num_mutuals " +
+                "FROM PairMutuals " +
+                "GROUP BY id1, id2"
+            );
+            
+            // Retrieve the top num pairs.
+            ResultSet rs = stmt.executeQuery(
+                "SELECT M.id1, M.id2, M.num_mutuals, " +
+                "       U1.first_name AS first_name1, U1.last_name AS last_name1, " +
+                "       U2.first_name AS first_name2, U2.last_name AS last_name2 " +
+                "FROM MutualPairs M " +
+                "JOIN project2.Public_Users U1 ON U1.user_id = M.id1 " +
+                "JOIN project2.Public_Users U2 ON U2.user_id = M.id2 " +
+                "ORDER BY M.num_mutuals DESC, M.id1 ASC " + // add the order by id1 ASC - final fix yay!
+                "FETCH FIRST " + num + " ROWS ONLY"
+            );
 
             while (rs.next()) {
                 long id1 = rs.getLong("id1");
@@ -626,44 +588,50 @@ while (rsPhotos.next()) {
                 UserInfo u2 = new UserInfo(id2, rs.getString("first_name2"), rs.getString("last_name2"));
                 UsersPair pair = new UsersPair(u1, u2);
                 
-                // For this pair, retrieve all mutual friends sorted by user_id ascending.
-                ResultSet rsMutuals = stmt.executeQuery(
-                    "WITH FriendsOf AS ( " +
-                    "    SELECT user1_id AS user_id, user2_id AS friend_id FROM project2.Public_Friends " +
-                    "    UNION ALL " +
-                    "    SELECT user2_id AS user_id, user1_id AS friend_id FROM project2.Public_Friends " +
-                    "), " +
-                    "PairMutuals AS ( " +
-                    "    SELECT F1.user_id AS id1, F2.user_id AS id2, F1.friend_id AS mutual_id " +
-                    "    FROM FriendsOf F1 " +
-                    "    JOIN FriendsOf F2 ON F1.friend_id = F2.friend_id " +
-                    "      AND F1.user_id < F2.user_id " +
-                    ") " +
-                    "SELECT U.user_id, U.first_name, U.last_name " +
-                    "FROM PairMutuals PM " +
-                    "JOIN project2.Public_Users U ON U.user_id = PM.mutual_id " +
-                    "WHERE PM.id1 = " + id1 + " AND PM.id2 = " + id2 +
-                    " ORDER BY U.user_id ASC"
-                );
+                // Use a separate Statement for inner query -- just like in Q4
+                try (Statement innerStmt = oracle.createStatement(FakebookOracleConstants.AllScroll,
+                                                                FakebookOracleConstants.ReadOnly)) {
+                    ResultSet rsMutuals = innerStmt.executeQuery(
+                        "WITH FriendsOf AS ( " +
+                        "    SELECT user1_id AS user_id, user2_id AS friend_id FROM project2.Public_Friends " +
+                        "    UNION ALL " +
+                        "    SELECT user2_id AS user_id, user1_id AS friend_id FROM project2.Public_Friends " +
+                        "), " +
+                        "PairMutuals AS ( " +
+                        "    SELECT F1.user_id AS id1, F2.user_id AS id2, F1.friend_id AS mutual_id " +
+                        "    FROM FriendsOf F1 " +
+                        "    JOIN FriendsOf F2 ON F1.friend_id = F2.friend_id " +
+                        "      AND F1.user_id < F2.user_id " +
+                        ") " +
+                        "SELECT U.user_id, U.first_name, U.last_name " +
+                        "FROM PairMutuals PM " +
+                        "JOIN project2.Public_Users U ON U.user_id = PM.mutual_id " +
+                        "WHERE PM.id1 = " + id1 + " AND PM.id2 = " + id2 +
+                        " ORDER BY U.user_id ASC"
+                    );
 
-                while (rsMutuals.next()) {
-                    long mutualID = rsMutuals.getLong("user_id");
-                    String mFirst = rsMutuals.getString("first_name");
-                    String mLast = rsMutuals.getString("last_name");
-                    UserInfo mutual = new UserInfo(mutualID, mFirst, mLast);
-                    pair.addSharedFriend(mutual);
+                    while (rsMutuals.next()) {
+                        long mutualID = rsMutuals.getLong("user_id");
+                        String mFirst = rsMutuals.getString("first_name");
+                        String mLast = rsMutuals.getString("last_name");
+                        UserInfo mutual = new UserInfo(mutualID, mFirst, mLast);
+                        pair.addSharedFriend(mutual);
+                    }
+                    rsMutuals.close();
                 }
 
                 results.add(pair);
             } // while
 
-        rs.close();
-        stmt.executeUpdate("DROP VIEW MutualPairs"); // Drop
-        
+            rs.close();
+
+            // Drop the view
+            stmt.executeUpdate("DROP VIEW MutualPairs");
+
         } catch (SQLException e) {
             System.err.println(e.getMessage());
         }
-        
+    
         return results;
     }
 
