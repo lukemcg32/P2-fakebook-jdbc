@@ -305,7 +305,6 @@ public final class StudentFakebookOracle extends FakebookOracle {
             results.add(user);
         }
 
-        //remember to close
         rs.close();
             
             /*
@@ -524,7 +523,9 @@ public final class StudentFakebookOracle extends FakebookOracle {
                 PhotoInfo photo = new PhotoInfo(photoId, albumId, photoLink, albumName);
                 currentPair.addSharedPhoto(photo);
             }
-    
+
+        rs.close();
+
         // drop
         stmt.executeUpdate("DROP VIEW top_pairs_view");
 
@@ -532,6 +533,7 @@ public final class StudentFakebookOracle extends FakebookOracle {
             System.err.println(e.getMessage());
         }
 
+        
         return results;
     }
 
@@ -619,9 +621,9 @@ public final class StudentFakebookOracle extends FakebookOracle {
                 results.add(pair);
             } // while
 
+        rs.close();
         stmt.executeUpdate("DROP VIEW MutualPairs"); // Drop
-
-
+        
         } catch (SQLException e) {
             System.err.println(e.getMessage());
         }
