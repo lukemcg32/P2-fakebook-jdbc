@@ -503,7 +503,7 @@ public final class StudentFakebookOracle extends FakebookOracle {
             while (rs.next()) {
                 long uid1 = rs.getLong("user_id1");
                 long uid2 = rs.getLong("user_id2");
-                // If this row belongs to a new pair, create a new MatchPair.
+                // if row belongs to a new pair, create a new MatchPair.
                 if (currentPair == null || uid1 != currentUid1 || uid2 != currentUid2) {
                     UserInfo u1 = new UserInfo(uid1, rs.getString("first_name1"), rs.getString("last_name1"));
                     UserInfo u2 = new UserInfo(uid2, rs.getString("first_name2"), rs.getString("last_name2"));
