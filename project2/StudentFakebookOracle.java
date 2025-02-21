@@ -317,7 +317,8 @@ public final class StudentFakebookOracle extends FakebookOracle {
                 results.add(u2);
             */
         } catch (SQLException e) {
-            System.err.println(e.getMessage());
+            // can I just comment it out?
+            // System.err.println(e.getMessage());
         }
 
         return results;
@@ -341,9 +342,9 @@ public final class StudentFakebookOracle extends FakebookOracle {
             // (a) Find the IDs, links, and IDs and names of the containing album of the top
             //<num> photos with the most tagged users
             
-            //create the view
+            //create OR REPLACE the view -
             stmt.executeUpdate(
-            "CREATE VIEW Q4_View AS " +
+            "CREATE OR REPLACE VIEW Q4_View AS " +
             "SELECT P.Photo_ID, P.Photo_Link, A.Album_ID, A.Album_Name, COUNT(*) AS numTags " +
             "FROM project2.Public_Photos P " +
             "JOIN project2.Public_Albums A ON A.Album_ID = P.Album_ID " +
@@ -440,20 +441,93 @@ public final class StudentFakebookOracle extends FakebookOracle {
     //        (B) For each pair identified in (A), find the IDs, links, and IDs and names of
     //            the containing album of each photo in which they are tagged together
     public FakebookArrayList<MatchPair> matchMaker(int num, int yearDiff) throws SQLException {
-        FakebookArrayList<MatchPair> results = new FakebookArrayList<MatchPair>("\n");
-
+            FakebookArrayList<MatchPair> results = new FakebookArrayList<MatchPair>("\n");
+    
         try (Statement stmt = oracle.createStatement(FakebookOracleConstants.AllScroll,
-                FakebookOracleConstants.ReadOnly)) {
-            /*
-                EXAMPLE DATA STRUCTURE USAGE
-                ============================================
-                UserInfo u1 = new UserInfo(93103, "Romeo", "Montague");
-                UserInfo u2 = new UserInfo(93113, "Juliet", "Capulet");
-                MatchPair mp = new MatchPair(u1, 1597, u2, 1597);
-                PhotoInfo p = new PhotoInfo(167, 309, "www.photolink.net", "Tragedy");
-                mp.addSharedPhoto(p);
-                results.add(mp);
-            */
+                                                    FakebookOracleConstants.ReadOnly)) {
+
+            // Use CREATE OR REPLACE so we don't get ORA-00955 if the view already exists.
+            stmt.executeUpdate( 
+                "CREATE OR REPLACE VIEW top_pairs_view AS " +
+                "SELECT " +
+                "    U1.user_id         AS user_id1, " +
+                "    U1.first_name      AS first_name1, " +
+                "    U1.last_name       AS last_name1, " +
+                "    U1.year_of_birth   AS year_of_birth1, " +
+                "    U2.user_id         AS user_id2, " +
+                "    U2.first_name      AS first_name2, " +
+                "    U2.last_name       AS last_name2, " +
+                "    U2.year_of_birth   AS year_of_birth2 " +
+                "FROM project2.Public_Users U1 " +
+                "JOIN project2.Public_Users U2 " +
+                "  ON U1.gender = U2.gender " +
+                " AND U1.user_id < U2.user_id " +
+                "WHERE U1.year_of_birth IS NOT NULL " +
+                "  AND U2.year_of_birth IS NOT NULL " +
+                "  AND ABS(U1.year_of_birth - U2.year_of_birth) <= " + yearDiff + " " +
+                "  AND EXISTS ( " +
+                "      SELECT 1 FROM project2.Public_Tags T1 " +
+                "      JOIN project2.Public_Tags T2 ON T1.tag_photo_id = T2.tag_photo_id " +
+                "      WHERE T1.tag_subject_id = U1.user_id " +
+                "        AND T2.tag_subject_id = U2.user_id " +
+                "  ) " +
+                "  AND NOT EXISTS ( " +
+                "      SELECT 1 FROM project2.Public_Friends F " +
+                "      WHERE (F.user1_id = U1.user_id AND F.user2_id = U2.user_id) " +
+                "         OR (F.user2_id = U1.user_id AND F.user1_id = U2.user_id) " +
+                "  ) " +
+                "ORDER BY U1.user_id, U2.user_id " +
+                "FETCH FIRST " + num + " ROWS ONLY"
+            );
+        
+            ResultSet rs = stmt.executeQuery(
+                "SELECT " +
+                "    tv.user_id1, tv.first_name1, tv.last_name1, tv.year_of_birth1, " +
+                "    tv.user_id2, tv.first_name2, tv.last_name2, tv.year_of_birth2, " +
+                "    p.photo_id, p.photo_link, a.album_id, a.album_name " +
+                "FROM top_pairs_view tv " +
+                "JOIN project2.Public_Tags t1 ON t1.tag_subject_id = tv.user_id1 " +
+                "JOIN project2.Public_Tags t2 ON t2.tag_subject_id = tv.user_id2 " +
+                "  AND t1.tag_photo_id = t2.tag_photo_id " +
+                "JOIN project2.Public_Photos p ON p.photo_id = t1.tag_photo_id " +
+                "JOIN project2.Public_Albums a ON a.album_id = p.album_id " +
+                "ORDER BY tv.user_id1, tv.user_id2, p.photo_id"
+            );
+
+
+            // group consecutive rows with the same pair
+            MatchPair currentPair = null;
+            long currentUid1 = -1;
+            long currentUid2 = -1;
+
+            // start looping
+            while (rs.next()) {
+                long uid1 = rs.getLong("user_id1");
+                long uid2 = rs.getLong("user_id2");
+                // If this row belongs to a new pair, create a new MatchPair.
+                if (currentPair == null || uid1 != currentUid1 || uid2 != currentUid2) {
+                    UserInfo u1 = new UserInfo(uid1, rs.getString("first_name1"), rs.getString("last_name1"));
+                    UserInfo u2 = new UserInfo(uid2, rs.getString("first_name2"), rs.getString("last_name2"));
+                    long year1 = rs.getLong("year_of_birth1");
+                    long year2 = rs.getLong("year_of_birth2");
+                    currentPair = new MatchPair(u1, year1, u2, year2);
+                    results.add(currentPair);
+                    currentUid1 = uid1;
+                    currentUid2 = uid2;
+                } // if
+
+                // Add the shared photo for this pair.
+                long photoId = rs.getLong("photo_id");
+                String photoLink = rs.getString("photo_link");
+                long albumId = rs.getLong("album_id");
+                String albumName = rs.getString("album_name");
+                PhotoInfo photo = new PhotoInfo(photoId, albumId, photoLink, albumName);
+                currentPair.addSharedPhoto(photo);
+            }
+    
+        // drop
+        stmt.executeUpdate("DROP VIEW top_pairs_view");
+
         } catch (SQLException e) {
             System.err.println(e.getMessage());
         }
@@ -461,7 +535,7 @@ public final class StudentFakebookOracle extends FakebookOracle {
         return results;
     }
 
-    @Override
+        @Override
     // Query 6
     // -----------------------------------------------------------------------------------
     // GOALS: (A) Find the IDs, first names, and last names of each of the two users in
@@ -471,23 +545,87 @@ public final class StudentFakebookOracle extends FakebookOracle {
     //            of all the two users' common friends
     public FakebookArrayList<UsersPair> suggestFriends(int num) throws SQLException {
         FakebookArrayList<UsersPair> results = new FakebookArrayList<UsersPair>("\n");
+    
+    try (Statement stmt = oracle.createStatement(FakebookOracleConstants.AllScroll,
+                                                    FakebookOracleConstants.ReadOnly)) {
 
-        try (Statement stmt = oracle.createStatement(FakebookOracleConstants.AllScroll,
-                FakebookOracleConstants.ReadOnly)) {
-            /*
-                EXAMPLE DATA STRUCTURE USAGE
-                ============================================
-                UserInfo u1 = new UserInfo(16, "The", "Hacker");
-                UserInfo u2 = new UserInfo(80, "Dr.", "Marbles");
-                UserInfo u3 = new UserInfo(192, "Digit", "Le Boid");
-                UsersPair up = new UsersPair(u1, u2);
-                up.addSharedFriend(u3);
-                results.add(up);
-            */
+        // Create or replace the MutualPairs view to avoid the ORA-00955 error.
+        stmt.executeUpdate(
+            "CREATE OR REPLACE VIEW MutualPairs AS " +
+            "WITH FriendsOf AS ( " +
+            "    SELECT user1_id AS user_id, user2_id AS friend_id FROM project2.Public_Friends " +
+            "    UNION ALL " +
+            "    SELECT user2_id AS user_id, user1_id AS friend_id FROM project2.Public_Friends " +
+            "), " +
+            "PairMutuals AS ( " +
+            "    SELECT F1.user_id AS id1, F2.user_id AS id2, F1.friend_id AS mutual_id " +
+            "    FROM FriendsOf F1 " +
+            "    JOIN FriendsOf F2 ON F1.friend_id = F2.friend_id " +
+            "      AND F1.user_id < F2.user_id " +
+            ") " +
+            "SELECT id1, id2, COUNT(DISTINCT mutual_id) AS num_mutuals " +
+            "FROM PairMutuals " +
+            "GROUP BY id1, id2"
+        );
+        
+        // Retrieve the top num pairs
+        ResultSet rs = stmt.executeQuery(
+            "SELECT M.id1, M.id2, M.num_mutuals, " +
+            "       U1.first_name AS first_name1, U1.last_name AS last_name1, " +
+            "       U2.first_name AS first_name2, U2.last_name AS last_name2 " +
+            "FROM MutualPairs M " +
+            "JOIN project2.Public_Users U1 ON U1.user_id = M.id1 " +
+            "JOIN project2.Public_Users U2 ON U2.user_id = M.id2 " +
+            "ORDER BY M.num_mutuals DESC " +
+            "FETCH FIRST " + num + " ROWS ONLY"
+        );
+
+
+            while (rs.next()) {
+                long id1 = rs.getLong("id1");
+                long id2 = rs.getLong("id2");
+                UserInfo u1 = new UserInfo(id1, rs.getString("first_name1"), rs.getString("last_name1"));
+                UserInfo u2 = new UserInfo(id2, rs.getString("first_name2"), rs.getString("last_name2"));
+                UsersPair pair = new UsersPair(u1, u2);
+                
+                // For this pair, retrieve all mutual friends sorted by user_id ascending.
+                ResultSet rsMutuals = stmt.executeQuery(
+                    "WITH FriendsOf AS ( " +
+                    "    SELECT user1_id AS user_id, user2_id AS friend_id FROM project2.Public_Friends " +
+                    "    UNION ALL " +
+                    "    SELECT user2_id AS user_id, user1_id AS friend_id FROM project2.Public_Friends " +
+                    "), " +
+                    "PairMutuals AS ( " +
+                    "    SELECT F1.user_id AS id1, F2.user_id AS id2, F1.friend_id AS mutual_id " +
+                    "    FROM FriendsOf F1 " +
+                    "    JOIN FriendsOf F2 ON F1.friend_id = F2.friend_id " +
+                    "      AND F1.user_id < F2.user_id " +
+                    ") " +
+                    "SELECT U.user_id, U.first_name, U.last_name " +
+                    "FROM PairMutuals PM " +
+                    "JOIN project2.Public_Users U ON U.user_id = PM.mutual_id " +
+                    "WHERE PM.id1 = " + id1 + " AND PM.id2 = " + id2 +
+                    " ORDER BY U.user_id ASC"
+                );
+
+                while (rsMutuals.next()) {
+                    long mutualID = rsMutuals.getLong("user_id");
+                    String mFirst = rsMutuals.getString("first_name");
+                    String mLast = rsMutuals.getString("last_name");
+                    UserInfo mutual = new UserInfo(mutualID, mFirst, mLast);
+                    pair.addSharedFriend(mutual);
+                }
+
+                results.add(pair);
+            } // while
+
+        stmt.executeUpdate("DROP VIEW MutualPairs"); // Drop
+
+
         } catch (SQLException e) {
             System.err.println(e.getMessage());
         }
-
+        
         return results;
     }
 
