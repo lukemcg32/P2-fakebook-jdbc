@@ -127,11 +127,11 @@ public final class StudentFakebookOracle extends FakebookOracle {
             ResultSet rs = stmt.executeQuery( // rs stores query result
             // our query from query1.sql
             "SELECT DISTINCT first_name " +
-            "FROM project2.Public_Users " +
+            "FROM " + UsersTable + " " +
             "WHERE length(first_name) = (" +
             // Subquery below
             "SELECT MAX(length(first_name)) " +
-            "FROM project2.Public_Users " +
+            "FROM " + UsersTable + " " +
             ") "                            +
             "AND first_name IS NOT NULL " +
             //add this to order correctly
@@ -147,11 +147,11 @@ public final class StudentFakebookOracle extends FakebookOracle {
             // (b) find shortest first names
             rs = stmt.executeQuery(
             "SELECT DISTINCT first_name " +
-            "FROM project2.Public_Users " +
+            "FROM " + UsersTable + " " +
             "WHERE length(first_name) =  (" +
             // subquery below
             "SELECT MIN(length(first_name)) " +
-            "FROM project2.Public_Users " +
+            "FROM " + UsersTable + " " +
             ") "                            +
             "AND first_name IS NOT NULL "+
             //add this to order correctly
@@ -166,7 +166,7 @@ public final class StudentFakebookOracle extends FakebookOracle {
             // (c) find count of most common first name
             rs = stmt.executeQuery(
             "SELECT COUNT(*) AS mostName " +
-            "FROM project2.Public_Users " +
+            "FROM " + UsersTable + " " +
             "WHERE First_Name IS NOT NULL " +
             "GROUP BY First_Name " +
             "ORDER BY mostName DESC " +
@@ -182,7 +182,7 @@ public final class StudentFakebookOracle extends FakebookOracle {
             // (d) find the most common first name
             rs = stmt.executeQuery(
             "SELECT first_name " +
-            "FROM project2.Public_Users " +
+            "FROM " + UsersTable + " " +
             "WHERE First_Name IS NOT NULL " +
             "GROUP BY First_Name " +
             "HAVING COUNT(*) = " + mostCommonNameCount + " " +  // uses the value from part c
@@ -233,9 +233,9 @@ public final class StudentFakebookOracle extends FakebookOracle {
             ResultSet rs = stmt.executeQuery(
             // our query from query2.sql
             "SELECT U.user_id, U.first_name, U.last_name " +
-            "FROM project2.Public_Users U " +
+            "FROM " + UsersTable + " U " +
             "WHERE NOT EXISTS " +
-            "(SELECT 1 FROM project2.Public_Friends F " +
+            "(SELECT 1 FROM " + FriendsTable + " F " +
             " WHERE U.user_id = F.user1_id OR U.user_id = F.user2_id " + 
             ")"                                     +
             "ORDER BY U.user_id ASC");
@@ -284,9 +284,9 @@ public final class StudentFakebookOracle extends FakebookOracle {
             ResultSet rs = stmt.executeQuery(
             //our query from query3.sql
             "SELECT U.user_id, U.first_name, U.last_name " +
-            "FROM project2.Public_Users U " +
-            "JOIN project2.Public_User_Current_Cities C ON U.user_id = C.user_id " +
-            "JOIN project2.Public_User_Hometown_Cities H ON U.user_id = H.user_id " +
+            "FROM " + UsersTable + " U " +
+            "JOIN " + CurrentCitiesTable + " C ON U.user_id = C.user_id " +
+            "JOIN " + HometownCitiesTable + " H ON U.user_id = H.user_id " +
             "WHERE C.current_city_id IS NOT NULL " +
             "AND H.hometown_city_id IS NOT NULL " +
             "AND C.current_city_id <> H.hometown_city_id " +
@@ -347,9 +347,9 @@ public final class StudentFakebookOracle extends FakebookOracle {
             stmt.executeUpdate(
             "CREATE OR REPLACE VIEW Q4_View AS " +
             "SELECT P.Photo_ID, A.Album_ID, P.Photo_Link, A.Album_Name, COUNT(*) AS numTags " +
-            "FROM project2.Public_Photos P " +
-            "JOIN project2.Public_Albums A ON A.Album_ID = P.Album_ID " +
-            "JOIN project2.Public_Tags T ON T.Tag_Photo_ID = P.Photo_ID " +
+            "FROM " + PhotosTable + " P " +
+            "JOIN " + AlbumsTable + " A ON A.Album_ID = P.Album_ID " +
+            "JOIN " + TagsTable + " T ON T.Tag_Photo_ID = P.Photo_ID " +
             "GROUP BY P.Photo_ID, P.Photo_Link, A.Album_ID, A.Album_Name " +
             "ORDER BY numTags DESC, P.Photo_ID ASC"
             );
@@ -376,8 +376,8 @@ public final class StudentFakebookOracle extends FakebookOracle {
                                                                 FakebookOracleConstants.ReadOnly)) {
                     ResultSet rsUsers = innerStmt.executeQuery(
                         "SELECT U.user_id, U.first_name, U.last_name " +
-                        "FROM project2.Public_Users U " +
-                        "JOIN project2.Public_Tags T ON T.TAG_SUBJECT_ID = U.user_id " +
+                        "FROM " + UsersTable + " U " +
+                        "JOIN " + TagsTable + " T ON T.TAG_SUBJECT_ID = U.user_id " +
                         "WHERE T.TAG_PHOTO_ID = " + photoId + " " +
                         "ORDER BY U.user_id ASC"
                     );
@@ -456,21 +456,21 @@ public final class StudentFakebookOracle extends FakebookOracle {
                 "    U2.first_name      AS first_name2, " +
                 "    U2.last_name       AS last_name2, " +
                 "    U2.year_of_birth   AS year_of_birth2 " +
-                "FROM project2.Public_Users U1 " +
-                "JOIN project2.Public_Users U2 " +
+                "FROM " + UsersTable + " U1 " +
+                "JOIN " + UsersTable + " U2 " +
                 "  ON U1.gender = U2.gender " +
                 " AND U1.user_id < U2.user_id " +
                 "WHERE U1.year_of_birth IS NOT NULL " +
                 "  AND U2.year_of_birth IS NOT NULL " +
                 "  AND ABS(U1.year_of_birth - U2.year_of_birth) <= " + yearDiff + " " +
                 "  AND EXISTS ( " +
-                "      SELECT 1 FROM project2.Public_Tags T1 " +
-                "      JOIN project2.Public_Tags T2 ON T1.tag_photo_id = T2.tag_photo_id " +
+                "      SELECT 1 FROM " + TagsTable + " T1 " +
+                "      JOIN " + TagsTable + " T2 ON T1.tag_photo_id = T2.tag_photo_id " +
                 "      WHERE T1.tag_subject_id = U1.user_id " +
                 "        AND T2.tag_subject_id = U2.user_id " +
                 "  ) " +
                 "  AND NOT EXISTS ( " +
-                "      SELECT 1 FROM project2.Public_Friends F " +
+                "      SELECT 1 FROM " + FriendsTable + " F " +
                 "      WHERE (F.user1_id = U1.user_id AND F.user2_id = U2.user_id) " +
                 "         OR (F.user2_id = U1.user_id AND F.user1_id = U2.user_id) " +
                 "  ) " +
@@ -484,11 +484,11 @@ public final class StudentFakebookOracle extends FakebookOracle {
                 "    tv.user_id2, tv.first_name2, tv.last_name2, tv.year_of_birth2, " +
                 "    p.photo_id, p.photo_link, a.album_id, a.album_name " +
                 "FROM top_pairs_view tv " +
-                "JOIN project2.Public_Tags t1 ON t1.tag_subject_id = tv.user_id1 " +
-                "JOIN project2.Public_Tags t2 ON t2.tag_subject_id = tv.user_id2 " +
+                "JOIN " + TagsTable + " t1 ON t1.tag_subject_id = tv.user_id1 " +
+                "JOIN " + TagsTable + " t2 ON t2.tag_subject_id = tv.user_id2 " +
                 "  AND t1.tag_photo_id = t2.tag_photo_id " +
-                "JOIN project2.Public_Photos p ON p.photo_id = t1.tag_photo_id " +
-                "JOIN project2.Public_Albums a ON a.album_id = p.album_id " +
+                "JOIN " + PhotosTable + " p ON p.photo_id = t1.tag_photo_id " +
+                "JOIN " + AlbumsTable + " a ON a.album_id = p.album_id " +
                 "ORDER BY tv.user_id1, tv.user_id2, p.photo_id"
             );
 
@@ -554,9 +554,9 @@ public final class StudentFakebookOracle extends FakebookOracle {
             stmt.executeUpdate(
                 "CREATE OR REPLACE VIEW MutualPairs AS " +
                 "WITH FriendsOf AS ( " +
-                "    SELECT user1_id AS user_id, user2_id AS friend_id FROM project2.Public_Friends " +
+                "    SELECT user1_id AS user_id, user2_id AS friend_id FROM " + FriendsTable + " " +
                 "    UNION ALL " +
-                "    SELECT user2_id AS user_id, user1_id AS friend_id FROM project2.Public_Friends " +
+                "    SELECT user2_id AS user_id, user1_id AS friend_id FROM " + FriendsTable + " " +
                 "), " +
                 "PairMutuals AS ( " +
                 "    SELECT F1.user_id AS id1, F2.user_id AS id2, F1.friend_id AS mutual_id " +
@@ -575,8 +575,8 @@ public final class StudentFakebookOracle extends FakebookOracle {
                 "       U1.first_name AS first_name1, U1.last_name AS last_name1, " +
                 "       U2.first_name AS first_name2, U2.last_name AS last_name2 " +
                 "FROM MutualPairs M " +
-                "JOIN project2.Public_Users U1 ON U1.user_id = M.id1 " +
-                "JOIN project2.Public_Users U2 ON U2.user_id = M.id2 " +
+                "JOIN " + UsersTable + " U1 ON U1.user_id = M.id1 " +
+                "JOIN " + UsersTable + " U2 ON U2.user_id = M.id2 " +
                 "ORDER BY M.num_mutuals DESC, M.id1 ASC " + // add the order by id1 ASC - final fix yay!
                 "FETCH FIRST " + num + " ROWS ONLY"
             );
@@ -593,9 +593,9 @@ public final class StudentFakebookOracle extends FakebookOracle {
                                                                 FakebookOracleConstants.ReadOnly)) {
                     ResultSet rsMutuals = innerStmt.executeQuery(
                         "WITH FriendsOf AS ( " +
-                        "    SELECT user1_id AS user_id, user2_id AS friend_id FROM project2.Public_Friends " +
+                        "    SELECT user1_id AS user_id, user2_id AS friend_id FROM " + FriendsTable + " " +
                         "    UNION ALL " +
-                        "    SELECT user2_id AS user_id, user1_id AS friend_id FROM project2.Public_Friends " +
+                        "    SELECT user2_id AS user_id, user1_id AS friend_id FROM " + FriendsTable + " " +
                         "), " +
                         "PairMutuals AS ( " +
                         "    SELECT F1.user_id AS id1, F2.user_id AS id2, F1.friend_id AS mutual_id " +
@@ -605,7 +605,7 @@ public final class StudentFakebookOracle extends FakebookOracle {
                         ") " +
                         "SELECT U.user_id, U.first_name, U.last_name " +
                         "FROM PairMutuals PM " +
-                        "JOIN project2.Public_Users U ON U.user_id = PM.mutual_id " +
+                        "JOIN " + UsersTable + " U ON U.user_id = PM.mutual_id " +
                         "WHERE PM.id1 = " + id1 + " AND PM.id2 = " + id2 +
                         " ORDER BY U.user_id ASC"
                     );
@@ -650,8 +650,8 @@ public final class StudentFakebookOracle extends FakebookOracle {
             stmt.executeUpdate(
             "CREATE VIEW EventCount AS " +
             "SELECT C.State_Name, COUNT(*) AS StateCount " +
-            "FROM project2.Public_Cities C " +
-            "JOIN project2.Public_User_Events E ON E.event_city_id = C.city_id " +
+            "FROM " + CitiesTable + " C " +
+            "JOIN " + EventsTable + " E ON E.event_city_id = C.city_id " +
             "GROUP BY C.State_Name"
         );
 
@@ -726,8 +726,8 @@ public final class StudentFakebookOracle extends FakebookOracle {
             stmt.executeUpdate(
                 "CREATE VIEW FindAges AS " +
                 "SELECT U.user_id, U.first_name, U.last_name, U.year_of_birth, U.month_of_birth, U.day_of_birth " +
-                "FROM project2.Public_Users U " +
-                "JOIN project2.Public_FRIENDS F ON (F.user1_id = U.user_id OR F.user2_id = U.user_id) " +
+                "FROM " + UsersTable + " U " +
+                "JOIN " + FriendsTable + " F ON (F.user1_id = U.user_id OR F.user2_id = U.user_id) " +
                 "WHERE " + userID + " IN (F.user1_id, F.user2_id)"
             );
 
@@ -814,21 +814,22 @@ public final class StudentFakebookOracle extends FakebookOracle {
     //              (iii) are friends
     //              (iv) less than 10 birth years apart
             // query from query9.sql
+
             ResultSet rs = stmt.executeQuery(
             "SELECT U1.user_id, U1.first_name, U1.last_name, " +
-            "U2.user_id AS user2_id, U2.first_name AS user2_first, U2.last_name AS user2_last " +
-            "FROM project2.Public_Users U1 " +
-            "JOIN project2.Public_Users U2 ON U1.user_id != U2.user_id " +
-            "JOIN project2.Public_FRIENDS F ON (U1.user_id = F.user1_id AND U2.user_id = F.user2_id) " +
-            "OR (U2.user_id = F.user1_id AND U1.user_id = F.user2_id) " +
-            "JOIN project2.Public_User_Hometown_Cities HC1 ON HC1.user_id = U1.user_id " +
-            "JOIN project2.Public_User_Hometown_Cities HC2 ON HC2.user_id = U2.user_id " +
-            "WHERE HC1.hometown_city_id = HC2.hometown_city_id " +
-            "AND U1.last_name = U2.last_name " +
-            "AND (ABS(U1.year_of_birth - U2.year_of_birth) < 10) " +
-            "AND U1.user_id < U2.user_id " +
-            //add this order by to fix ordering issue in ag
-            "ORDER BY U1.user_id ASC, U2.user_id ASC");
+                "U2.user_id AS user2_id, U2.first_name AS user2_first, U2.last_name AS user2_last " +
+                "FROM " + UsersTable + " U1 " +
+                "JOIN " + UsersTable + " U2 ON U1.user_id != U2.user_id " +
+                "JOIN " + FriendsTable + " F ON (U1.user_id = F.user1_id AND U2.user_id = F.user2_id) " +
+                "OR (U2.user_id = F.user1_id AND U1.user_id = F.user2_id) " +
+                "JOIN " + HometownCitiesTable + " HC1 ON HC1.user_id = U1.user_id " +
+                "JOIN " + HometownCitiesTable + " HC2 ON HC2.user_id = U2.user_id " +
+                "WHERE HC1.hometown_city_id = HC2.hometown_city_id " +
+                "AND U1.last_name = U2.last_name " +
+                "AND (ABS(U1.year_of_birth - U2.year_of_birth) < 10) " +
+                "AND U1.user_id < U2.user_id " +
+                //add this order by to fix ordering issue in ag
+                "ORDER BY U1.user_id ASC, U2.user_id ASC");
 
             while (rs.next()) {
                 //for each tuple, extract userid, first and last name
